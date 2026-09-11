@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>When Danger Comes - 防災小英雄大冒險</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Comic Sans MS', 'Microsoft JhengHei', Arial, sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f172a, #1e1b4b);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+    }
+
+    /* 標題與大字體設計 */
+    h1 {
+      color: #facc15;
+      font-size: 2rem;
+      margin-bottom: 12px;
+      text-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+      text-align: center;
+    }
+
+    /* 頂部數據儀表板 */
+    .dashboard {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 12px 16px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .stat-item {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .stat-value {
+      color: #38bdf8;
+      font-size: 1.4rem;
+    }
+
+    .coin-value {
+      color: #facc15;
+      font-size: 1.4rem;
+    }
+
+    /* Canvas 遊戲畫布 */
+    #gameContainer {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      height: 420px;
+      border: 5px solid #38bdf8;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+      touch-action: manipulation;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: #090d16;
+      display: block;
+    }
+
+    /* 開始按鈕 */
+    .controls {
+      margin-top: 16px;
+    }
+
+    .start-btn {
+      background: linear-gradient(to bottom, #22c55e, #15803d);
+      color: white;
+      border: none;
+      padding: 14px 40px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #166534;
+      transition: transform 0.1s;
+    }
+
+    .start-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #166534;
+    }
+
+    /* 評分 Modal 彈出視窗 */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.88);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(6px);
+    }
+
+    .modal-content {
+      background: #1e293b;
+      padding: 28px;
+      border-radius: 28px;
+      text-align: center;
+      width: 88%;
+      max-width: 340px;
+      border: 4px solid #facc15;
+    }
+
+    .modal-content h2 {
+      color: #facc15;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+
+    /* 大顆星號評分介面 */
+    .star-rating {
+      display: flex;
+      justify-content: center;
+      direction: rtl;
+      font-size: 2.8rem;
+      margin: 16px 0;
+    }
+
+    .star-rating input {
+      display: none;
+    }
+
+    .star-rating label {
+      color: #475569;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input:checked ~ label {
+      color: #facc15;
+    }
+
+    .submit-btn {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 12px 28px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 24px;
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛡️ When Danger Comes 遊戲 🪙</h1>
+
+  <!-- 背景音樂音訊標籤 -->
+  <audio id="bgMusic" src="When Danger Comes.mp3" preload="auto"></audio>
+
+  <div class="dashboard">
+    <div class="stat-item">👥 遊玩人次: <span id="playCount" class="stat-value">0</span></div>
+    <div class="stat-item">🪙 金幣: <span id="coinCount" class="coin-value">0</span></div>
+    <div class="stat-item">⭐ 好玩度: <span id="avgRating" class="stat-value">0.0</span></div>
+  </div>
+
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="600" height="420"></canvas>
+
+    <!-- 評分 Modal 彈窗 -->
+    <div id="feedbackModal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h2>🎉 任務完成！</h2>
+        <p style="font-size: 1.2rem;">獲得金幣：<span id="finalCoins" style="color:#facc15; font-weight:bold; font-size:1.6rem;">0</span> 🪙</p>
+        
+        <h3 style="margin-top: 16px; color: #38bdf8; font-size: 1.4rem;">好玩嗎？</h3>
+        <p style="font-size:0.9rem; color:#94a3b8; margin-top:4px;">(1顆星：不好玩 | 5顆星：很好玩)</p>
+        
+        <div class="star-rating">
+          <input type="radio" id="star5" name="rating" value="5" /><label for="star5">★</label>
+          <input type="radio" id="star4" name="rating" value="4" /><label for="star4">★</label>
+          <input type="radio" id="star3" name="rating" value="3" /><label for="star3">★</label>
+          <input type="radio" id="star2" name="rating" value="2" /><label for="star2">★</label>
+          <input type="radio" id="star1" name="rating" value="1" /><label for="star1">★</label>
+        </div>
+
+        <button id="submitFeedbackBtn" class="submit-btn">送出回饋</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn" class="start-btn">▶️ 開始音樂防災遊戲</button>
+  </div>
+
+  <script>
+    // ===== 1. 本地 LocalStorage 數據管理 =====
+    function initStats() {
+      if (!localStorage.getItem('danger_game_play_count')) localStorage.setItem('danger_game_play_count', '0');
+      if (!localStorage.getItem('danger_game_ratings')) localStorage.setItem('danger_game_ratings', JSON.stringify([]));
+      updateDashboardUI();
+    }
+
+    function recordPlay() {
+      let count = parseInt(localStorage.getItem('danger_game_play_count')) + 1;
+      localStorage.setItem('danger_game_play_count', count.toString());
+      updateDashboardUI();
+    }
+
+    function saveRating(stars) {
+      let ratings = JSON.parse(localStorage.getItem('danger_game_ratings'));
+      ratings.push(stars);
+      localStorage.setItem('danger_game_ratings', JSON.stringify(ratings));
+      updateDashboardUI();
+    }
+
+    function updateDashboardUI() {
+      document.getElementById('playCount').innerText = localStorage.getItem('danger_game_play_count');
+      let ratings = JSON.parse(localStorage.getItem('danger_game_ratings'));
+      if (ratings.length > 0) {
+        let avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        document.getElementById('avgRating').innerText = avg.toFixed(1);
+      }
+    }
+
+    // ===== 2. Canvas 遊戲與防災動畫邏輯 =====
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const bgMusic = document.getElementById('bgMusic');
+
+    let isPlaying = false;
+    let coins = 0;
+    let targets = [];
+    let particles = [];
+    let spawnInterval = null;
+
+    // 專為學童設計的 4 大防災主題標靶
+    const TARGET_TYPES = [
+      { type: 'earthquake', name: '地震', color: '#facc15', icon: '⚡' },
+      { type: 'rain', name: '大雨', color: '#38bdf8', icon: '🌧️' },
+      { type: 'fire', name: '濃煙火災', color: '#f87171', icon: '🔥' },
+      { type: 'wind', name: '強風', color: '#a855f7', icon: '🌀' }
+    ];
+
+    class Target {
+      constructor() {
+        this.info = TARGET_TYPES[Math.floor(Math.random() * TARGET_TYPES.length)];
+        this.radius = 40; // 80px 直徑的大區域，易於學童點擊
+        this.x = Math.random() * (canvas.width - 120) + 60;
+        this.y = Math.random() * (canvas.height - 120) + 60;
+        this.life = 130; // 在畫面上停留時間
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        // 高對比光暈背景
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.info.color;
+        ctx.shadowColor = this.info.color;
+        ctx.shadowBlur = 18;
+        ctx.fill();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // 標靶圖示
+        ctx.font = '36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.info.icon, 0, 0);
+
+        ctx.restore();
+      }
+
+      update() {
+        this.life -= 1;
+      }
+    }
+
+    // 金幣回饋特效
+    class Particle {
+      constructor(x, y, text) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.life = 1.0;
+        this.vy = -2.5;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.font = 'bold 26px Comic Sans MS, Microsoft JhengHei';
+        ctx.fillStyle = `rgba(250, 204, 21, ${this.life})`;
+        ctx.fillText(this.text, this.x - 20, this.y);
+        ctx.restore();
+      }
+
+      update() {
+        this.y += this.vy;
+        this.life -= 0.03;
+      }
+    }
+
+    // 觸控與點擊判定
+    function handleTouch(e) {
+      if (!isPlaying) return;
+      e.preventDefault();
+
+      const rect = canvas.getBoundingClientRect();
+      let clickX, clickY;
+
+      if (e.touches && e.touches.length > 0) {
+        clickX = e.touches[0].clientX - rect.left;
+        clickY = e.touches[0].clientY - rect.top;
+      } else {
+        clickX = e.clientX - rect.left;
+        clickY = e.clientY - rect.top;
+      }
+
+      targets.forEach((target, index) => {
+        const dist = Math.hypot(clickX - target.x, clickY - target.y);
+        if (dist < target.radius + 15) { // 寬鬆判斷，利於觸控
+          coins += 1;
+          document.getElementById('coinCount').innerText = coins;
+          
+          // 彈出 +1 🪙 金幣回饋
+          particles.push(new Particle(target.x, target.y, '+1 🪙'));
+          targets.splice(index, 1);
+        }
+      });
+    }
+
+    canvas.addEventListener('touchstart', handleTouch, { passive: false });
+    canvas.addEventListener('mousedown', handleTouch);
+
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // A. 更新與繪製標靶
+      targets.forEach((target, index) => {
+        target.update();
+        target.draw();
+        if (target.life <= 0) targets.splice(index, 1);
+      });
+
+      // B. 更新與繪製金幣特效
+      particles.forEach((p, index) => {
+        p.update();
+        p.draw();
+        if (p.life <= 0) particles.splice(index, 1);
+      });
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ===== 3. 流程控制與音樂整合 =====
+    document.getElementById('startBtn').addEventListener('click', function() {
+      recordPlay(); // 累加遊玩人次
+
+      coins = 0;
+      targets = [];
+      particles = [];
+      document.getElementById('coinCount').innerText = coins;
+      document.getElementById('feedbackModal').classList.add('hidden');
+
+      // 播放背景音樂
+      bgMusic.currentTime = 0;
+      bgMusic.play().catch(err => alert("請確認音訊檔名稱為 When Danger Comes.mp3 並放在同一目錄下！"));
+
+      isPlaying = true;
+      gameLoop();
+
+      // 每 800 毫秒產生一個防災目標
+      if (spawnInterval) clearInterval(spawnInterval);
+      spawnInterval = setInterval(() => {
+        if (isPlaying && targets.length < 5) {
+          targets.push(new Target());
+        }
+      }, 800);
+    });
+
+    // 當音樂播放完畢時，遊戲結束並跳出星級評價
+    bgMusic.addEventListener('ended', function() {
+      isPlaying = false;
+      if (spawnInterval) clearInterval(spawnInterval);
+      document.getElementById('finalCoins').innerText = coins;
+      document.getElementById('feedbackModal').classList.remove('hidden');
+    });
+
+    // 提交評價回饋
+    document.getElementById('submitFeedbackBtn').addEventListener('click', function() {
+      const selectedRating = document.querySelector('input[name="rating"]:checked');
+      if (selectedRating) {
+        saveRating(parseInt(selectedRating.value));
+        alert("謝謝你的評分！你真是棒棒的防災小英雄！");
+        document.getElementById('feedbackModal').classList.add('hidden');
+      } else {
+        alert("請選擇 1~5 顆星評分喔！");
+      }
+    });
+
+    // 初始化統計
+    initStats();
+  </script>
+</body>
+</html>
